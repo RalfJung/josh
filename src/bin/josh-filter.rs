@@ -46,6 +46,18 @@ fn make_app() -> clap::Command<'static> {
                 .takes_value(true),
         )
         .arg(
+            clap::Arg::new("author")
+                .help("Author to use for commits with rewritten message")
+                .long("author")
+                .takes_value(true),
+        )
+        .arg(
+            clap::Arg::new("email")
+                .help("Author email to use for commits with rewritten message")
+                .long("email")
+                .takes_value(true),
+        )
+        .arg(
             clap::Arg::new("single")
                 .help("Produce a history that contains only one single commit")
                 .long("single"),
@@ -200,7 +212,14 @@ fn run_filter(args: Vec<String>) -> josh::JoshResult<i32> {
                 refs.push((reference.name().unwrap().to_string(), target));
             }
         }
-        filterobj = josh::filter::chain(josh::filter::squash(Some(&ids)), filterobj);
+        filterobj = josh::filter::chain(
+            josh::filter::squash(Some((
+                args.value_of("author").unwrap(),
+                args.value_of("email").unwrap(),
+                &ids,
+            ))),
+            filterobj,
+        );
     };
 
     let odb = repo.odb()?;
