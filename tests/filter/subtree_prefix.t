@@ -83,7 +83,7 @@ Work in the subtree, and sync that back.
   [1] :prefix=subtree
   [4] :/subtree
   [4] :at_commit=c036f944faafb865e0585e4fa5e005afa0aeea3f[:prefix=subtree]
-  $ git log --graph --pretty=%s  refs/heads/master
+  $ git log --graph --pretty=%s refs/heads/master
   * add even more content
   * subtree edit from main repo
   *   subtree merge
@@ -106,3 +106,39 @@ And then re-extract, which should re-construct the same subtree.
   [5] :/subtree
   [5] :at_commit=c036f944faafb865e0585e4fa5e005afa0aeea3f[:prefix=subtree]
   $ test $(git rev-parse subtree) = $(git rev-parse subtree2)
+
+Simulate a feature branch on the main repo that crosses subtree changes
+  $ git checkout master 2>/dev/null
+  $ git checkout -b feature1 2>/dev/null
+  $ git reset --hard $SUBTREE_TIP >/dev/null
+  $ echo work > feature1
+  $ git add feature1 >/dev/null
+  $ git commit -m feature1 >/dev/null
+  $ git checkout master 2>/dev/null
+  $ git merge feature1 --no-ff >/dev/null
+
+On the subtree, simulate some independent work, and then a sync, then some more work.
+  $ git checkout subtree 2>/dev/null
+  $ echo work > subfeature1
+  $ git add subfeature1 >/dev/null
+  $ git commit -m subfeature1 >/dev/null
+  $ josh-filter -s :at_commit=$SUBTREE_TIP[:prefix=subtree]:/subtree refs/heads/master --update refs/heads/subtree-sync >/dev/null
+  $ git merge subtree-sync --no-ff >/dev/null
+  $ echo work > subfeature2
+  $ git add subfeature2 >/dev/null
+  $ git commit -m subfeature2 >/dev/null
+
+And another main tree feature off of SUBTREE_TIP
+  $ git checkout -b feature2 2>/dev/null
+  $ git reset --hard $SUBTREE_TIP >/dev/null
+  $ echo work > feature2
+  $ git add feature2 >/dev/null
+  $ git commit -m feature2 >/dev/null
+  $ git checkout master 2>/dev/null
+  $ git merge feature2 --no-ff >/dev/null
+
+And finally, sync first from main to sub and then back.
+  $ git checkout subtree 2>/dev/null
+  $ josh-filter -s :at_commit=$SUBTREE_TIP[:prefix=subtree]:/subtree refs/heads/master --update refs/heads/subtree-sync >/dev/null
+  $ git merge subtree-sync --no-ff >/dev/null
+  $ josh-filter -s :at_commit=$SUBTREE_TIP[:prefix=subtree]:/subtree refs/heads/master --update refs/heads/subtree --reverse
